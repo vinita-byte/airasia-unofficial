@@ -40,9 +40,11 @@ export function AirplaneWindow({
   }, [parallaxX, parallaxY])
 
   return (
+    // Mobile is height-driven in dynamic viewport units (capped at 55dvh and
+    // by its flex row, so browser chrome never clips it); md+ is width-driven.
     <div
-      className="relative"
-      style={{ width: 'min(50vh, 80vw)', aspectRatio: '0.69' }}
+      className="relative h-[min(55dvh,116vw)] max-h-full max-w-full md:h-auto md:w-[min(50dvh,80vw)]"
+      style={{ aspectRatio: '0.69' }}
     >
       {/* Recessed bezel: the cut-out the window sits down inside, lit from
           the glass outward so the floor of the recess brightens inward. */}

@@ -1,7 +1,12 @@
 import burjUrl from '../assets/burj-khalifa.jpg'
+import klUrl from '../assets/kuala-lumpur.jpg'
+import maldivesUrl from '../assets/maldives.jpg'
 import fujiUrl from '../assets/mount-fuji.jpg'
 import santoriniUrl from '../assets/santorini.jpg'
 import flyerUrl from '../assets/singapore-flyer.jpg'
+import ulunDanuUrl from '../assets/ulun-danu.jpg'
+import watArunUrl from '../assets/wat-arun.jpg'
+import type { FlagId } from './flags.ts'
 
 export interface Destination {
   id: string
@@ -10,6 +15,12 @@ export interface Destination {
   flight: string
   title: string
   place: string
+  /** City name for the apron card and the on-glass label. */
+  city: string
+  country: string
+  flag: FlagId
+  /** Rough flight time from India, for the apron card. */
+  duration: string
   timeZone: string
   /** Short zone label beside the clock, for standard time. */
   zoneLabel: string
@@ -25,6 +36,10 @@ export const DESTINATIONS: Destination[] = [
     flight: 'AK 707',
     title: 'Singapore Flyer',
     place: 'Marina Bay',
+    city: 'Singapore',
+    country: 'Singapore',
+    flag: 'sg',
+    duration: '5h 45m',
     timeZone: 'Asia/Singapore',
     zoneLabel: 'SGT',
     photo: flyerUrl,
@@ -35,6 +50,10 @@ export const DESTINATIONS: Destination[] = [
     flight: 'D7 306',
     title: 'Burj Khalifa',
     place: 'Downtown Dubai',
+    city: 'Dubai',
+    country: 'United Arab Emirates',
+    flag: 'ae',
+    duration: '3h 30m',
     timeZone: 'Asia/Dubai',
     zoneLabel: 'GST',
     photo: burjUrl,
@@ -45,6 +64,10 @@ export const DESTINATIONS: Destination[] = [
     flight: 'D7 532',
     title: 'Mount Fuji',
     place: 'Chureito Pagoda',
+    city: 'Tokyo',
+    country: 'Japan',
+    flag: 'jp',
+    duration: '8h 10m',
     timeZone: 'Asia/Tokyo',
     zoneLabel: 'JST',
     photo: fujiUrl,
@@ -55,12 +78,76 @@ export const DESTINATIONS: Destination[] = [
     flight: 'D7 918',
     title: 'Santorini',
     place: 'Oia caldera',
+    city: 'Santorini',
+    country: 'Greece',
+    flag: 'gr',
+    duration: '9h 40m',
     timeZone: 'Europe/Athens',
     zoneLabel: 'EET',
     zoneLabelDst: 'EEST',
     photo: santoriniUrl,
   },
+  {
+    id: 'kul',
+    code: 'KUL',
+    flight: 'AK 130',
+    title: 'Petronas Towers',
+    place: 'KLCC at dusk',
+    city: 'Kuala Lumpur',
+    country: 'Malaysia',
+    flag: 'my',
+    duration: '5h 30m',
+    timeZone: 'Asia/Kuala_Lumpur',
+    zoneLabel: 'MYT',
+    photo: klUrl,
+  },
+  {
+    id: 'bkk',
+    code: 'BKK',
+    flight: 'FD 171',
+    title: 'Wat Arun',
+    place: 'Bangkok riverside',
+    city: 'Bangkok',
+    country: 'Thailand',
+    flag: 'th',
+    duration: '4h 15m',
+    timeZone: 'Asia/Bangkok',
+    zoneLabel: 'ICT',
+    photo: watArunUrl,
+  },
+  {
+    id: 'dps',
+    code: 'DPS',
+    flight: 'QZ 551',
+    title: 'Ulun Danu Bratan',
+    place: 'Lake Bratan, Bali',
+    city: 'Denpasar',
+    country: 'Indonesia',
+    flag: 'id',
+    duration: '7h 20m',
+    timeZone: 'Asia/Makassar',
+    zoneLabel: 'WITA',
+    photo: ulunDanuUrl,
+  },
+  {
+    id: 'mle',
+    code: 'MLE',
+    flight: 'I5 1401',
+    title: 'Overwater villas',
+    place: 'North Malé Atoll',
+    city: 'Malé',
+    country: 'Maldives',
+    flag: 'mv',
+    duration: '1h 45m',
+    timeZone: 'Indian/Maldives',
+    zoneLabel: 'MVT',
+    photo: maldivesUrl,
+  },
 ]
+
+export function destinationIndexById(id: string): number {
+  return DESTINATIONS.findIndex((d) => d.id === id)
+}
 
 export interface ScenePreset {
   name: string
@@ -198,6 +285,10 @@ void main() {
   float dist = length(vUv - 0.5);
   color *= 1.0 - uVignette * smoothstep(0.25, 0.78, dist);
 
+  // Fade up from black while the texture decodes. Applied before the cloud
+  // so a sweep can cover glass that is still dark, e.g. when boarding.
+  color *= uReveal;
+
   // Cloud sweeping left to right across the glass while the view changes.
   if (uSweep >= 0.0) {
     float billow = fbm(vUv * vec2(2.6, 3.4) + vec2(uSweep * 1.6, uTime * 0.03));
@@ -217,9 +308,6 @@ void main() {
     vec3 cloud = mix(vec3(0.74, 0.78, 0.85), vec3(1.0), billow * 0.6 + detail * 0.4);
     color = mix(color, cloud, cover);
   }
-
-  // Fade up from black while the texture decodes.
-  color *= uReveal;
 
   gl_FragColor = vec4(color, 1.0);
 }
@@ -241,7 +329,20 @@ export interface SceneHandle {
   dispose: () => void
 }
 
-export function createPhotoScene(canvas: HTMLCanvasElement): SceneHandle {
+export interface PhotoSceneOptions {
+  /** Which destination loads first. */
+  initialIndex?: number
+  /**
+   * Start on dark glass with no photo, for the boarding arrival: the first
+   * changeDestination sweep then reveals the view instead of exchanging one.
+   */
+  startDark?: boolean
+}
+
+export function createPhotoScene(
+  canvas: HTMLCanvasElement,
+  options: PhotoSceneOptions = {},
+): SceneHandle {
   const holder = canvas.parentElement
   if (!holder) {
     throw new Error('The scene canvas needs a parent element to size against.')
@@ -347,7 +448,9 @@ export function createPhotoScene(canvas: HTMLCanvasElement): SceneHandle {
   let sweeping = false
   let swapped = false
 
-  void loadInto(0, DESTINATIONS[0].photo)
+  if (!options.startDark) {
+    void loadInto(0, DESTINATIONS[options.initialIndex ?? 0].photo)
+  }
 
   const current: Grade = cloneGrade(SCENES[0])
   const target: Grade = cloneGrade(SCENES[0])
@@ -442,6 +545,11 @@ export function createPhotoScene(canvas: HTMLCanvasElement): SceneHandle {
         swapped = true
         shownSlot = incomingSlot
         applyFraming()
+        // Snap to full brightness while the cloud still covers everything,
+        // so glass that started dark uncovers straight onto the photo.
+        if (slots[shownSlot].loaded) {
+          reveal = 1
+        }
       }
       if (swapped) {
         const out = (p - SWAP_AT) / (1 - SWAP_AT)

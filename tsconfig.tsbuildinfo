@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/components/AirplaneWindow.tsx","./src/components/CabinClocks.tsx","./src/components/CabinInterior.tsx","./src/components/MorphText.tsx","./src/components/WindowView.tsx","./src/hooks/useHandTracking.ts","./src/scene/flags.ts","./src/scene/photoScene.ts"],"version":"6.0.3"}

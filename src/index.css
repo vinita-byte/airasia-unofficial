@@ -18,6 +18,16 @@ body {
   color: #f3f1ea;
 }
 
+/* Horizontal chip strip: snap points, momentum scrolling, no scrollbar. */
+.chip-strip {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.chip-strip::-webkit-scrollbar {
+  display: none;
+}
+
 .hud-label {
   margin: 0;
   font-size: 11px;
