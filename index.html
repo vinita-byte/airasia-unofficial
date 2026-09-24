@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Seat 22A · Singapore Flyer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="view"></canvas>
+
+      <div id="hud" hidden>
+        <header class="hud-bar">
+          <p class="flight">SQ 318 · SIN</p>
+          <p class="seat">Seat 22A</p>
+        </header>
+        <footer class="hud-bar">
+          <p class="place">Singapore Flyer · Marina Bay</p>
+          <p class="hint">Drag to lean toward the glass</p>
+        </footer>
+      </div>
+
+      <div id="loader" role="status">
+        <div class="loader-oval" aria-hidden="true"></div>
+        <p>Opening the shade…</p>
+      </div>
+
+      <div id="error" hidden>
+        <p>
+          This cabin view needs WebGL. Try a current browser with hardware
+          acceleration turned on.
+        </p>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
