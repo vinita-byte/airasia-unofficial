@@ -44,23 +44,45 @@ export function AirplaneWindow({
       className="relative"
       style={{ width: 'min(50vh, 80vw)', aspectRatio: '0.69' }}
     >
-      {/* Outer bezel: the aircraft wall cut-out. */}
+      {/* Recessed bezel: the cut-out the window sits down inside, lit from
+          the glass outward so the floor of the recess brightens inward. */}
       <div
-        className="absolute -inset-[7%] rounded-[50%] bg-[#121317]"
+        className="absolute -inset-[5.5%] rounded-[50%]"
         style={{
-          boxShadow:
-            '0 30px 80px rgba(0,0,0,0.65), inset 0 2px 3px rgba(255,255,255,0.07), inset 0 -14px 28px rgba(0,0,0,0.7)',
+          background:
+            'radial-gradient(closest-side, #e2ded7 58%, #c6c1b8 82%, #a8a39a 100%)',
+          boxShadow: [
+            'inset 0 11px 20px rgba(28,25,20,0.42)',
+            'inset 0 -7px 16px rgba(28,25,20,0.28)',
+            'inset 5px 0 14px rgba(28,25,20,0.18)',
+            'inset -5px 0 14px rgba(28,25,20,0.18)',
+            '0 1px 0 rgba(255,255,255,0.4)',
+            '0 18px 38px rgba(0,0,0,0.4)',
+          ].join(', '),
         }}
       />
 
-      {/* Padded white surround. */}
+      {/* Padded surround, bevelled in toward the glass. */}
       <div
         className="absolute inset-0 rounded-[50%] bg-[#efede6]"
         style={{
           boxShadow:
-            'inset 0 8px 16px rgba(255,255,255,0.75), inset 0 -12px 22px rgba(148,142,128,0.55), 0 6px 22px rgba(0,0,0,0.5)',
+            'inset 0 8px 16px rgba(255,255,255,0.75), inset 0 -12px 22px rgba(148,142,128,0.55), 0 2px 5px rgba(34,30,24,0.4), 0 10px 26px rgba(0,0,0,0.42)',
         }}
       />
+
+      {/* Breather hole, bottom of the frame. */}
+      <div className="absolute inset-x-0 bottom-[2.4%] flex justify-center">
+        <div
+          className="h-[7px] w-[7px] rounded-full"
+          style={{
+            background:
+              'radial-gradient(circle at 50% 32%, #2b2723 0%, #0c0b0a 70%)',
+            boxShadow:
+              'inset 0 1px 2px rgba(0,0,0,0.9), 0 1px 0 rgba(255,255,255,0.55)',
+          }}
+        />
+      </div>
 
       {/* Window mask: everything outside is clipped. */}
       <div className="absolute inset-[9%] overflow-hidden rounded-[50%] bg-[#0c1622]">

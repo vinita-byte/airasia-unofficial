@@ -1,8 +1,44 @@
-import photoUrl from '../assets/singapore-flyer.jpg'
+import burjUrl from '../assets/burj-khalifa.jpg'
+import flyerUrl from '../assets/singapore-flyer.jpg'
+
+export interface Destination {
+  id: string
+  /** Airport code shown in the cabin HUD. */
+  code: string
+  flight: string
+  title: string
+  place: string
+  timeZone: string
+  /** Short zone label beside the clock. */
+  zoneLabel: string
+  photo: string
+}
+
+export const DESTINATIONS: Destination[] = [
+  {
+    id: 'sin',
+    code: 'SIN',
+    flight: 'SQ 318',
+    title: 'Singapore Flyer',
+    place: 'Marina Bay',
+    timeZone: 'Asia/Singapore',
+    zoneLabel: 'SGT',
+    photo: flyerUrl,
+  },
+  {
+    id: 'dxb',
+    code: 'DXB',
+    flight: 'EK 517',
+    title: 'Burj Khalifa',
+    place: 'Downtown Dubai',
+    timeZone: 'Asia/Dubai',
+    zoneLabel: 'GST',
+    photo: burjUrl,
+  },
+]
 
 export interface ScenePreset {
-  title: string
-  caption: string
+  name: string
   /** Overall brightness multiplier. */
   exposure: number
   /** Per-channel tint applied to the photo. */
@@ -16,8 +52,7 @@ export interface ScenePreset {
 
 export const SCENES: ScenePreset[] = [
   {
-    title: 'Singapore Flyer',
-    caption: 'Marina Bay · 16:40 SGT',
+    name: 'Daylight',
     exposure: 1,
     tint: [1, 1, 1],
     saturation: 1.05,
@@ -26,8 +61,7 @@ export const SCENES: ScenePreset[] = [
     vignette: 0.18,
   },
   {
-    title: 'Golden Hour',
-    caption: 'Final approach · 19:08 SGT',
+    name: 'Golden hour',
     exposure: 0.95,
     tint: [1.18, 0.93, 0.71],
     saturation: 1.1,
@@ -36,8 +70,7 @@ export const SCENES: ScenePreset[] = [
     vignette: 0.26,
   },
   {
-    title: 'Blue Hour',
-    caption: 'City lights · 20:41 SGT',
+    name: 'Blue hour',
     exposure: 0.58,
     tint: [0.66, 0.78, 1.08],
     saturation: 0.82,
@@ -47,7 +80,17 @@ export const SCENES: ScenePreset[] = [
   },
 ]
 
-/** The photo is pre-cropped around the Flyer, so the frame stays centred. */
+/** Cloud builds to full cover over this long, and the photo swaps underneath it. */
+export const SWEEP_IN_MS = 400
+/** Then it clears off the right edge over this long. */
+export const SWEEP_OUT_MS = 600
+export const SWEEP_TOTAL_MS = SWEEP_IN_MS + SWEEP_OUT_MS
+/** Fraction of the sweep at which the photo underneath is exchanged. */
+const SWAP_AT = SWEEP_IN_MS / SWEEP_TOTAL_MS
+/** The incoming photo lands slightly large and settles back to 1. */
+const SETTLE_FROM = 1.08
+
+/** The photos are pre-cropped around the subject, so the frame stays centred. */
 const FOCAL_X = 0.5
 const FOCAL_Y = 0.5
 const ZOOM = 1.04
@@ -64,10 +107,13 @@ void main() {
 const FRAGMENT_SHADER = `
 precision highp float;
 
-uniform sampler2D uPhoto;
+uniform sampler2D uPhotoA;
+uniform sampler2D uPhotoB;
+uniform float uSlot;
 uniform vec2 uCoverScale;
 uniform vec2 uFocal;
 uniform vec2 uDrift;
+uniform float uSettle;
 uniform float uExposure;
 uniform vec3 uTint;
 uniform float uSaturation;
@@ -75,14 +121,45 @@ uniform vec3 uHaze;
 uniform float uHazeAmount;
 uniform float uVignette;
 uniform float uReveal;
+uniform float uSweep;
+uniform float uTime;
 
 varying vec2 vUv;
 
+float hash(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+}
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+    mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+    u.y
+  );
+}
+
+float fbm(vec2 p) {
+  float total = 0.0;
+  float amplitude = 0.5;
+  for (int i = 0; i < 5; i++) {
+    total += noise(p) * amplitude;
+    p *= 2.02;
+    amplitude *= 0.5;
+  }
+  return total;
+}
+
 void main() {
-  vec2 centered = (vUv - 0.5) * uCoverScale + uDrift;
+  vec2 centered = (vUv - 0.5) * uCoverScale / uSettle + uDrift;
   vec2 uv = clamp(uFocal + centered, vec2(0.0), vec2(1.0));
-  // The photo is stored top-down relative to GL's texture origin.
-  vec3 color = texture2D(uPhoto, vec2(uv.x, 1.0 - uv.y)).rgb;
+  // The photos are stored top-down relative to GL's texture origin.
+  vec2 texUv = vec2(uv.x, 1.0 - uv.y);
+  vec3 color = uSlot < 0.5
+    ? texture2D(uPhotoA, texUv).rgb
+    : texture2D(uPhotoB, texUv).rgb;
 
   color *= uTint * uExposure;
 
@@ -95,6 +172,26 @@ void main() {
 
   float dist = length(vUv - 0.5);
   color *= 1.0 - uVignette * smoothstep(0.25, 0.78, dist);
+
+  // Cloud sweeping left to right across the glass while the view changes.
+  if (uSweep >= 0.0) {
+    float billow = fbm(vUv * vec2(2.6, 3.4) + vec2(uSweep * 1.6, uTime * 0.03));
+    float detail = fbm(vUv * vec2(6.5, 7.5) - vec2(uSweep * 2.2, 0.0));
+
+    // Ragged edges: displace the sweep position by the cloud's own shape.
+    float x = vUv.x + (billow - 0.5) * 0.35;
+    float edge = 0.45;
+
+    float inPhase = clamp(uSweep / ${SWAP_AT.toFixed(4)}, 0.0, 1.0);
+    float outPhase = clamp((uSweep - ${SWAP_AT.toFixed(4)}) / ${(1 - SWAP_AT).toFixed(4)}, 0.0, 1.0);
+    // Leading edge covers everything behind it; trailing edge then uncovers.
+    float front = mix(-0.9, 2.0, inPhase);
+    float back = mix(-0.9, 2.0, outPhase);
+    float cover = (1.0 - smoothstep(front - edge, front, x)) * smoothstep(back, back + edge, x);
+
+    vec3 cloud = mix(vec3(0.74, 0.78, 0.85), vec3(1.0), billow * 0.6 + detail * 0.4);
+    color = mix(color, cloud, cover);
+  }
 
   // Fade up from black while the texture decodes.
   color *= uReveal;
@@ -114,6 +211,8 @@ interface Grade {
 
 export interface SceneHandle {
   setPreset: (index: number) => void
+  /** Sweeps cloud across the glass and exchanges the view behind it. */
+  changeDestination: (index: number) => void
   dispose: () => void
 }
 
@@ -147,9 +246,11 @@ export function createPhotoScene(canvas: HTMLCanvasElement): SceneHandle {
   gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0)
 
   const uniform = (name: string) => gl.getUniformLocation(program, name)
+  const uSlot = uniform('uSlot')
   const uCoverScale = uniform('uCoverScale')
   const uFocal = uniform('uFocal')
   const uDrift = uniform('uDrift')
+  const uSettle = uniform('uSettle')
   const uExposure = uniform('uExposure')
   const uTint = uniform('uTint')
   const uSaturation = uniform('uSaturation')
@@ -157,47 +258,71 @@ export function createPhotoScene(canvas: HTMLCanvasElement): SceneHandle {
   const uHazeAmount = uniform('uHazeAmount')
   const uVignette = uniform('uVignette')
   const uReveal = uniform('uReveal')
+  const uSweep = uniform('uSweep')
+  const uTime = uniform('uTime')
 
+  gl.uniform1i(uniform('uPhotoA'), 0)
+  gl.uniform1i(uniform('uPhotoB'), 1)
   gl.uniform2f(uFocal, FOCAL_X, FOCAL_Y)
+  gl.uniform1f(uSettle, 1)
+  gl.uniform1f(uSweep, -1)
 
-  const texture = gl.createTexture()
-  gl.bindTexture(gl.TEXTURE_2D, texture)
-  // Single dark pixel until the photo decodes.
-  gl.texImage2D(
-    gl.TEXTURE_2D,
-    0,
-    gl.RGB,
-    1,
-    1,
-    0,
-    gl.RGB,
-    gl.UNSIGNED_BYTE,
-    new Uint8Array([12, 22, 34]),
-  )
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+  /** Two slots so a new view can decode while the old one is still showing. */
+  const slots = [0, 1].map((index) => {
+    const texture = gl.createTexture()
+    gl.activeTexture(index === 0 ? gl.TEXTURE0 : gl.TEXTURE1)
+    gl.bindTexture(gl.TEXTURE_2D, texture)
+    // Single dark pixel until a photo decodes.
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGB,
+      1,
+      1,
+      0,
+      gl.RGB,
+      gl.UNSIGNED_BYTE,
+      new Uint8Array([12, 22, 34]),
+    )
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    return { texture, aspect: 4 / 3, loaded: false }
+  })
 
-  let photoAspect = 4 / 3
-  let loaded = false
+  let disposed = false
 
-  const image = new Image()
-  image.decoding = 'async'
-  image.src = photoUrl
-  void image
-    .decode()
-    .catch(() => undefined)
-    .then(() => {
-      if (disposed || !image.naturalWidth) {
-        return
-      }
-      photoAspect = image.naturalWidth / image.naturalHeight
-      gl.bindTexture(gl.TEXTURE_2D, texture)
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image)
-      loaded = true
-      resize()
-    })
+  const loadInto = (slotIndex: number, url: string) => {
+    const slot = slots[slotIndex]
+    const image = new Image()
+    image.decoding = 'async'
+    image.src = url
+    return image
+      .decode()
+      .catch(() => undefined)
+      .then(() => {
+        if (disposed || !image.naturalWidth) {
+          return false
+        }
+        slot.aspect = image.naturalWidth / image.naturalHeight
+        gl.activeTexture(slotIndex === 0 ? gl.TEXTURE0 : gl.TEXTURE1)
+        gl.bindTexture(gl.TEXTURE_2D, slot.texture)
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image)
+        slot.loaded = true
+        resize()
+        return true
+      })
+  }
+
+  /** Which slot is on screen, and which is staged behind the cloud. */
+  let shownSlot = 0
+  let incomingSlot = 1
+  let sweepStart = 0
+  let sweeping = false
+  let swapped = false
+
+  void loadInto(0, DESTINATIONS[0].photo)
 
   const current: Grade = cloneGrade(SCENES[0])
   const target: Grade = cloneGrade(SCENES[0])
@@ -212,6 +337,18 @@ export function createPhotoScene(canvas: HTMLCanvasElement): SceneHandle {
     target.vignette = preset.vignette
   }
 
+  const changeDestination = (index: number) => {
+    if (sweeping) {
+      return
+    }
+    const next = DESTINATIONS[((index % DESTINATIONS.length) + DESTINATIONS.length) % DESTINATIONS.length]
+    incomingSlot = shownSlot === 0 ? 1 : 0
+    sweeping = true
+    swapped = false
+    sweepStart = performance.now()
+    void loadInto(incomingSlot, next.photo)
+  }
+
   const resize = () => {
     const dpr = Math.min(window.devicePixelRatio, 2)
     const width = Math.max(1, Math.round(holder.clientWidth * dpr))
@@ -221,9 +358,13 @@ export function createPhotoScene(canvas: HTMLCanvasElement): SceneHandle {
       canvas.height = height
     }
     gl.viewport(0, 0, width, height)
+    applyFraming()
+  }
 
-    // Cover-fit: show the largest centred crop that fills the window.
-    const viewAspect = width / height
+  /** Cover-fit the slot currently on screen; photos differ in aspect. */
+  const applyFraming = () => {
+    const viewAspect = canvas.width / canvas.height
+    const photoAspect = slots[shownSlot].aspect
     let scaleX = 1
     let scaleY = 1
     if (viewAspect < photoAspect) {
@@ -247,7 +388,6 @@ export function createPhotoScene(canvas: HTMLCanvasElement): SceneHandle {
   const observer = new ResizeObserver(resize)
   observer.observe(holder)
 
-  let disposed = false
   let rafId = 0
   let reveal = 0
   const started = performance.now()
@@ -267,7 +407,29 @@ export function createPhotoScene(canvas: HTMLCanvasElement): SceneHandle {
       current.haze[i] += (target.haze[i] - current.haze[i]) * k
     }
 
-    reveal += ((loaded ? 1 : 0) - reveal) * 0.06
+    reveal += ((slots[shownSlot].loaded ? 1 : 0) - reveal) * 0.06
+
+    let settle = 1
+    if (sweeping) {
+      const p = Math.min(1, (now - sweepStart) / SWEEP_TOTAL_MS)
+      // The exchange happens under full cloud cover, so it is never seen.
+      if (!swapped && p >= SWAP_AT) {
+        swapped = true
+        shownSlot = incomingSlot
+        applyFraming()
+      }
+      if (swapped) {
+        const out = (p - SWAP_AT) / (1 - SWAP_AT)
+        settle = SETTLE_FROM + (1 - SETTLE_FROM) * easeOutCubic(out)
+      }
+      gl.uniform1f(uSweep, p)
+      if (p >= 1) {
+        sweeping = false
+        gl.uniform1f(uSweep, -1)
+      }
+    }
+    gl.uniform1f(uSettle, settle)
+    gl.uniform1f(uSlot, shownSlot)
 
     // Slow drift so the view breathes like a moving aircraft.
     gl.uniform2f(
@@ -282,6 +444,7 @@ export function createPhotoScene(canvas: HTMLCanvasElement): SceneHandle {
     gl.uniform1f(uHazeAmount, current.hazeAmount)
     gl.uniform1f(uVignette, current.vignette)
     gl.uniform1f(uReveal, reveal)
+    gl.uniform1f(uTime, elapsed)
 
     gl.drawArrays(gl.TRIANGLES, 0, 3)
   }
@@ -289,15 +452,21 @@ export function createPhotoScene(canvas: HTMLCanvasElement): SceneHandle {
 
   return {
     setPreset,
+    changeDestination,
     dispose: () => {
       disposed = true
       cancelAnimationFrame(rafId)
       observer.disconnect()
-      gl.deleteTexture(texture)
+      slots.forEach((slot) => gl.deleteTexture(slot.texture))
       gl.deleteBuffer(buffer)
       gl.deleteProgram(program)
     },
   }
+}
+
+function easeOutCubic(t: number): number {
+  const clamped = Math.max(0, Math.min(1, t))
+  return 1 - Math.pow(1 - clamped, 3)
 }
 
 function cloneGrade(preset: ScenePreset): Grade {

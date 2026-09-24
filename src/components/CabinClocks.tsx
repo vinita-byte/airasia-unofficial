@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 
-const ZONES = [
-  { label: 'IST', timeZone: 'Asia/Kolkata' },
-  { label: 'SGT', timeZone: 'Asia/Singapore' },
-]
+const HOME = { label: 'IST', timeZone: 'Asia/Kolkata' }
+
+export interface CabinClocksProps {
+  /** Short label for the destination zone, e.g. SGT. */
+  zoneLabel: string
+  timeZone: string
+}
 
 function formatTime(timeZone: string, at: Date): string {
   return new Intl.DateTimeFormat('en-GB', {
@@ -14,8 +17,8 @@ function formatTime(timeZone: string, at: Date): string {
   }).format(at)
 }
 
-/** Departure and arrival local times, the way a cabin display carries them. */
-export function CabinClocks() {
+/** Home and destination local times, the way a cabin display carries them. */
+export function CabinClocks({ zoneLabel, timeZone }: CabinClocksProps) {
   const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
@@ -23,11 +26,13 @@ export function CabinClocks() {
     return () => window.clearInterval(id)
   }, [])
 
+  const zones = [HOME, { label: zoneLabel, timeZone }]
+
   return (
     <div className="flex items-baseline gap-3 tabular-nums sm:gap-4">
-      {ZONES.map((zone) => (
-        <p key={zone.label} className="hud-label text-white/60">
-          <span className="text-white/35">{zone.label}</span>{' '}
+      {zones.map((zone) => (
+        <p key={zone.label} className="hud-label text-[#2a2621]/75">
+          <span className="text-[#2a2621]/45">{zone.label}</span>{' '}
           {formatTime(zone.timeZone, now)}
         </p>
       ))}

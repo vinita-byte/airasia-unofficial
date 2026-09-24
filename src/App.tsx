@@ -2,10 +2,14 @@ import { useMotionValue, useMotionValueEvent, useSpring } from 'framer-motion'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AirplaneWindow } from './components/AirplaneWindow.tsx'
 import { CabinClocks } from './components/CabinClocks.tsx'
+import { CabinInterior } from './components/CabinInterior.tsx'
 import { useHandTracking } from './hooks/useHandTracking.ts'
 import {
   createPhotoScene,
+  DESTINATIONS,
   SCENES,
+  SWEEP_IN_MS,
+  SWEEP_TOTAL_MS,
   type SceneHandle,
 } from './scene/photoScene.ts'
 
@@ -21,11 +25,18 @@ export default function App() {
   const sceneRef = useRef<SceneHandle | null>(null)
   const sliderRef = useRef<HTMLInputElement>(null)
   const reopenTimer = useRef(0)
+  const swapTimer = useRef(0)
+  const settleTimer = useRef(0)
   const lastTouchRef = useRef(0)
   const armedRef = useRef(false)
+  const sweepingRef = useRef(false)
 
   const [sceneIndex, setSceneIndex] = useState(0)
   const [webglFailed, setWebglFailed] = useState(false)
+  // Which destination is selected, and which one the view is actually showing.
+  // They differ mid-sweep: the view changes under the cloud, not on click.
+  const [destIndex, setDestIndex] = useState(0)
+  const [shownDest, setShownDest] = useState(0)
 
   // Blind target: 0 closed, 1 open. The spring gives it weight and bounce.
   const target = useMotionValue(0)
@@ -51,6 +62,33 @@ export default function App() {
     }
     reopenTimer.current = window.setTimeout(attempt, REOPEN_DELAY)
   }, [open, target])
+
+  const changeDestination = useCallback(
+    (index: number) => {
+      if (sweepingRef.current || index === destIndex) {
+        return
+      }
+      sweepingRef.current = true
+      setDestIndex(index)
+      sceneRef.current?.changeDestination(index)
+      // Swap the placard while the cloud is at full cover, with the photo.
+      window.clearTimeout(swapTimer.current)
+      swapTimer.current = window.setTimeout(() => setShownDest(index), SWEEP_IN_MS)
+      window.clearTimeout(settleTimer.current)
+      settleTimer.current = window.setTimeout(() => {
+        sweepingRef.current = false
+      }, SWEEP_TOTAL_MS)
+    },
+    [destIndex],
+  )
+
+  useEffect(
+    () => () => {
+      window.clearTimeout(swapTimer.current)
+      window.clearTimeout(settleTimer.current)
+    },
+    [],
+  )
 
   const hands = useHandTracking({
     getOpen: () => open.get(),
@@ -130,48 +168,68 @@ export default function App() {
     }
   })
 
-  const scene = SCENES[sceneIndex]
+  const light = SCENES[sceneIndex]
+  const destination = DESTINATIONS[shownDest]
 
   return (
     <main className="relative flex h-dvh w-full items-center justify-center overflow-hidden bg-[#08090b]">
-      {/* Cabin wall. */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(120% 90% at 50% 30%, #17181d 0%, #0b0c0f 55%, #050607 100%)',
-        }}
-      />
+      <CabinInterior />
 
       <AirplaneWindow
         open={open}
         canvasRef={canvasRef}
-        title={scene.title}
-        caption={scene.caption}
+        title={destination.title}
+        caption={`${destination.place} · ${light.name}`}
         webglFailed={webglFailed}
       />
 
       {/* HUD */}
       <header className="pointer-events-none absolute inset-x-0 top-0 flex items-baseline justify-between gap-4 p-5 sm:p-7">
-        <p className="hud-label text-white/90">SQ 318 · SIN</p>
+        <p className="hud-label text-[#2a2621]">
+          {destination.flight} · {destination.code}
+        </p>
         <div className="flex flex-col items-end gap-1.5">
-          <p className="hud-label text-white/45">Seat 22A</p>
-          <CabinClocks />
+          <p className="hud-label text-[#2a2621]/55">Seat 22A</p>
+          <CabinClocks
+            zoneLabel={destination.zoneLabel}
+            timeZone={destination.timeZone}
+          />
         </div>
       </header>
 
       <footer className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-5 sm:p-7">
         <div>
           <p className="hud-label text-white/90">
-            Scene {sceneIndex + 1}/{SCENES.length} · {scene.title}
+            {light.name} · scene {sceneIndex + 1}/{SCENES.length}
           </p>
-          <p className="hud-label mt-1 hidden text-white/40 sm:block">
+          <p className="hud-label mt-1 hidden text-white/45 sm:block">
             Pull the blind fully shut to change the light · scroll or ↑↓ works
             too
           </p>
         </div>
 
         <div className="pointer-events-auto flex w-[178px] flex-col gap-2 rounded-2xl border border-white/15 bg-[#0a0c10]/75 p-3 backdrop-blur-md">
+          <div>
+            <span className="hud-label text-white/45">Destination</span>
+            <div className="mt-1.5 flex gap-1.5">
+              {DESTINATIONS.map((option, index) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => changeDestination(index)}
+                  aria-pressed={index === destIndex}
+                  className={`flex-1 cursor-pointer rounded-lg px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] transition-colors ${
+                    index === destIndex
+                      ? 'bg-[#efede6] text-[#101114]'
+                      : 'bg-white/10 text-white/65 hover:bg-white/20'
+                  }`}
+                >
+                  {option.code}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Never display:none — browsers stop decoding hidden video, which
               silently starves the tracker. Collapse it with layout instead. */}
           <div
