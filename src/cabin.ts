@@ -1,5 +1,7 @@
 import {
+  BoxGeometry,
   Color,
+  CylinderGeometry,
   ExtrudeGeometry,
   Group,
   Mesh,
@@ -15,7 +17,10 @@ import { ellipsePath, ellipseShape, OvalCurve } from './oval.ts'
 export const WINDOW_RX = 0.4
 export const WINDOW_RY = 0.58
 
-export function createCabin(): { group: Group; shade: Mesh } {
+/** Vertical travel that fully hides the blind inside the wall above the window. */
+export const BLIND_TRAVEL = 1.3
+
+export function createCabin(): { group: Group; blind: Group } {
   const group = new Group()
   group.name = 'Cabin'
 
@@ -82,16 +87,8 @@ export function createCabin(): { group: Group; shade: Mesh } {
   glass.position.z = 0.07
   group.add(glass)
 
-  const shade = new Mesh(
-    new ShapeGeometry(ellipseShape(WINDOW_RX + 0.01, WINDOW_RY + 0.01)),
-    new MeshStandardMaterial({
-      color: new Color('#1c1f27'),
-      roughness: 0.86,
-      metalness: 0,
-    }),
-  )
-  shade.position.z = 0.09
-  group.add(shade)
+  const blind = createBlind()
+  group.add(blind)
 
   const wash = new SpotLight(0xfff3de, 14, 5, 0.72, 0.55, 1)
   wash.position.set(0.05, 0.18, -1.15)
@@ -99,5 +96,63 @@ export function createCabin(): { group: Group; shade: Mesh } {
   group.add(wash)
   group.add(wash.target)
 
-  return { group, shade }
+  return { group, blind }
+}
+
+function createBlind(): Group {
+  const blind = new Group()
+  blind.name = 'WindowBlind'
+  blind.position.z = 0.09
+
+  const slatMaterial = new MeshStandardMaterial({
+    color: new Color('#cfc8ba'),
+    roughness: 0.82,
+    metalness: 0.02,
+  })
+
+  const panel = new Mesh(
+    new ShapeGeometry(ellipseShape(WINDOW_RX + 0.015, WINDOW_RY + 0.015)),
+    slatMaterial,
+  )
+  blind.add(panel)
+
+  // Faint horizontal ribs so the blind reads as a pull-down shade.
+  for (let i = -4; i <= 4; i += 1) {
+    const y = (i / 5) * WINDOW_RY
+    const halfWidth =
+      WINDOW_RX * Math.sqrt(Math.max(0.05, 1 - (y / WINDOW_RY) ** 2))
+    const rib = new Mesh(
+      new BoxGeometry(halfWidth * 2, 0.006, 0.003),
+      new MeshStandardMaterial({
+        color: new Color('#b9b2a4'),
+        roughness: 0.9,
+      }),
+    )
+    rib.position.set(0, y, 0.004)
+    blind.add(rib)
+  }
+
+  const handle = new Mesh(
+    new CylinderGeometry(0.014, 0.014, 0.16, 12),
+    new MeshStandardMaterial({
+      color: new Color('#8f8878'),
+      roughness: 0.5,
+      metalness: 0.25,
+    }),
+  )
+  handle.rotation.z = Math.PI / 2
+  handle.position.set(0, -WINDOW_RY + 0.1, 0.012)
+  blind.add(handle)
+
+  const notch = new Mesh(
+    new BoxGeometry(0.09, 0.028, 0.012),
+    new MeshStandardMaterial({
+      color: new Color('#a49c8c'),
+      roughness: 0.6,
+    }),
+  )
+  notch.position.set(0, -WINDOW_RY + 0.1, 0.008)
+  blind.add(notch)
+
+  return blind
 }

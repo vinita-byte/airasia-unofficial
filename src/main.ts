@@ -15,8 +15,9 @@ import {
   WebGLRenderer,
 } from 'three'
 import { Sky } from 'three/addons/objects/Sky.js'
-import { createCabin } from './cabin.ts'
+import { BLIND_TRAVEL, createCabin } from './cabin.ts'
 import { createSingaporeFlyer } from './flyer.ts'
+import { createHandControl, type HandState } from './handControl.ts'
 import { createWorld } from './world.ts'
 
 const canvas = document.querySelector<HTMLCanvasElement>('#view')
@@ -70,7 +71,7 @@ function startScene(
   rig.lookAt(8, 78, -700)
   scene.add(rig)
 
-  const { group: cabin, shade } = createCabin()
+  const { group: cabin, blind } = createCabin()
   rig.add(cabin)
 
   const lookPivot = new Group()
@@ -117,6 +118,13 @@ function startScene(
   const lookTarget = new Vector2()
   const lookCurrent = new Vector2()
   let dragging = false
+
+  // Blind state: 0 = fully open, 1 = fully closed. Starts closed, opens on load.
+  const blindState = { current: 1, target: 0 }
+
+  setupBlindControls((closed) => {
+    blindState.target = closed
+  }, () => blindState.target)
 
   const onPointerMove = (event: PointerEvent) => {
     const x = (event.clientX / window.innerWidth) * 2 - 1
@@ -176,13 +184,13 @@ function startScene(
     rig.position.y = 198 + Math.sin(elapsed * 0.9) * 0.18
     rig.rotation.z = Math.sin(elapsed * 0.7) * 0.002
 
-    const shadeDelay = 0.7
-    const shadeDuration = 2.15
-    const shadeT = Math.max(0, Math.min(1, (elapsed - shadeDelay) / shadeDuration))
-    const eased = 1 - (1 - shadeT) ** 3
-    shade.position.y = eased * 1.28
+    // Hold the blind closed briefly, then ease toward its target.
+    if (elapsed > 0.7) {
+      blindState.current += (blindState.target - blindState.current) * 0.07
+    }
+    blind.position.y = (1 - blindState.current) * BLIND_TRAVEL
 
-    if (!opened && shadeT > 0.12) {
+    if (!opened && blindState.current < 0.96) {
       opened = true
       loading.hidden = true
       chrome.hidden = false
@@ -193,4 +201,61 @@ function startScene(
   }
 
   requestAnimationFrame(tick)
+}
+
+function setupBlindControls(
+  setTarget: (closed: number) => void,
+  getTarget: () => number,
+) {
+  const video = document.querySelector<HTMLVideoElement>('#cam')
+  const status = document.querySelector<HTMLParagraphElement>('#hand-status')
+  const button = document.querySelector<HTMLButtonElement>('#hand-btn')
+  const panel = document.querySelector<HTMLElement>('#hand-panel')
+
+  if (!video || !status || !button || !panel) {
+    throw new Error('The hand-control panel is missing its markup.')
+  }
+
+  window.addEventListener(
+    'wheel',
+    (event) => {
+      setTarget(clamp01(getTarget() + event.deltaY * 0.0011))
+    },
+    { passive: true },
+  )
+
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown') {
+      setTarget(clamp01(getTarget() + 0.12))
+    } else if (event.key === 'ArrowUp') {
+      setTarget(clamp01(getTarget() - 0.12))
+    }
+  })
+
+  const applyState = (state: HandState, message: string) => {
+    status.textContent = message
+    panel.dataset.state = state
+    button.textContent =
+      state === 'idle' || state === 'error'
+        ? 'Enable hand control'
+        : 'Stop hand control'
+  }
+
+  const hands = createHandControl({
+    video,
+    onBlind: setTarget,
+    onState: applyState,
+  })
+
+  button.addEventListener('click', () => {
+    if (hands.running) {
+      hands.stop()
+    } else {
+      void hands.start()
+    }
+  })
+}
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value))
 }
