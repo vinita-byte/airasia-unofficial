@@ -1,0 +1,35 @@
+{
+  "name": "airasia-unofficial",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack -p 43591 -H 0.0.0.0",
+    "build": "next build",
+    "start": "next start -p 43591 -H 0.0.0.0",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.8.0",
+    "framer-motion": "^13.4.2",
+    "lucide-react": "^1.47.0",
+    "next": "16.3.6",
+    "razorpay": "^2.9.8",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "three": "^0.186.0",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/three": "^0.186.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "description": "AirAsia Unofficial — an immersive flight booking concept with a WebGL 3D seat picker."
+}

@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@theme {
+  --color-aa-red: #ed1c24;
+  --color-aa-crimson: #b80e15;
+  --color-aa-asphalt: #1a1a1a;
+  --color-aa-grey: #f5f6f8;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+  /* Sticky header height, so anchor jumps don't hide section titles. */
+  scroll-padding-top: 5.5rem;
+}
+
+body {
+  background: var(--color-aa-grey);
+  color: var(--color-aa-asphalt);
+}
+
+/* The 3D canvas swallows scroll gestures otherwise. */
+canvas {
+  touch-action: pan-y;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

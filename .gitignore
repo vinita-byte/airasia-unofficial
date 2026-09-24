@@ -25,3 +25,9 @@ agent-tools
 *.njsproj
 *.sln
 *.sw?
+
+# Next.js app
+airasia-immersive/node_modules
+airasia-immersive/.next
+airasia-immersive/out
+airasia-immersive/.env*.local
