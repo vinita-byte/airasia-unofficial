@@ -1,8 +1,9 @@
 # AirAsia Unofficial
 
 A fan-built concept of the modern AirAsia / AirAsia MOVE booking flow, built as a
-single scrolling page: search live fares, walk the cabin in 3D and pick a seat,
-add Santan meals, baggage and travel protection, burn reward points, then pay.
+single scrolling page: search live fares (round trip or one way), walk the cabin
+in 3D and pick a seat, add Santan meals, baggage, travel protection, add-on
+bundles and duty free, bundle a hotel with SNAP, burn reward points, then pay.
 
 Not affiliated with or endorsed by AirAsia or Capital A. Fares, schedules, seat
 availability and job postings are generated for demonstration only.
@@ -25,9 +26,11 @@ npm run lint                 # eslint
 
 | Area | Where | Notes |
 | --- | --- | --- |
-| Flight & route engine | `components/FlightSearch.tsx`, `lib/data.ts` | 10 airports, 3 cabin classes, deterministic fare matrix keyed on route + date so prices stay stable between renders |
+| Product tabs | `components/ProductTabs.tsx` | Flights, SNAP (flight + hotel, adds a flat ₹6,500 to the trip), Hotels, Duty Free and Transfers surfaces |
+| Flight & route engine | `components/FlightSearch.tsx`, `lib/data.ts` | 10 airports, 3 cabin classes, round trip / one way, deterministic fare matrix keyed on route + date so prices stay stable between renders |
 | 3D cabin & seat picker | `components/CabinScene.tsx` | React Three Fiber: 12 rows, aisle, lit windows, hover readout, pre-sold seats |
-| Ancillaries | `components/Ancillaries.tsx` | Santan menu, checked baggage tiers, travel protection |
+| Ancillaries | `components/Ancillaries.tsx` | Santan menu, checked baggage tiers, travel protection, and Value Pack / Red Carpet / Extra Baggage bundles |
+| Duty free | `components/DutyFreeShop.tsx` | Pre-order cart that settles in the same checkout as the fare |
 | Rewards | `components/RewardsHub.tsx` | Red/Gold/Platinum/Black ladder plus an earn-and-burn calculator |
 | Careers | `components/CareersPortal.tsx` | Filterable board with search, team filters and an empty state |
 | Checkout | `components/PaymentModal.tsx`, `app/api/razorpay/` | Razorpay order creation and HMAC signature verification |
