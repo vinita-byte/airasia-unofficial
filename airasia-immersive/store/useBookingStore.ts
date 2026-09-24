@@ -1,10 +1,18 @@
 import { create } from 'zustand'
 import {
+  type AncillaryBundle,
   type CabinClass,
+  type DutyFreeItem,
   type FlightOption,
+  SNAP_HOTEL_PRICE,
   TIERS,
   tierFor,
 } from '@/lib/data'
+
+export type { AncillaryBundle, DutyFreeItem }
+
+export type ProductTab = 'flights' | 'snap' | 'hotels' | 'dutyfree' | 'transfers'
+export type TripType = 'round' | 'one-way'
 
 export type SeatType = 'Standard' | 'Hot Seat' | 'Premium Flatbed'
 
@@ -32,6 +40,10 @@ export interface InsuranceSelection {
 }
 
 export interface BookingState {
+  /** Which product surface is active. SNAP bundles a hotel into the trip. */
+  activeTab: ProductTab
+  tripType: TripType
+
   origin: string
   destination: string
   date: string
@@ -43,12 +55,16 @@ export interface BookingState {
   selectedMeals: MealSelection[]
   baggage: BaggageSelection | null
   insurance: InsuranceSelection | null
+  selectedBundle: AncillaryBundle | null
+  dutyFreeCart: DutyFreeItem[]
 
   /** Lifetime points on the demo member account. */
   memberPoints: number
   /** Points the member has chosen to burn against this booking. */
   pointsToRedeem: number
 
+  setActiveTab: (tab: ProductTab) => void
+  setTripType: (type: TripType) => void
   setRoute: (patch: Partial<Pick<BookingState, 'origin' | 'destination' | 'date' | 'cabin' | 'passengers'>>) => void
   swapRoute: () => void
   selectFlight: (flight: FlightOption | null) => void
@@ -57,6 +73,9 @@ export interface BookingState {
   toggleMeal: (meal: MealSelection) => void
   setBaggage: (baggage: BaggageSelection | null) => void
   setInsurance: (insurance: InsuranceSelection | null) => void
+  setBundle: (bundle: AncillaryBundle | null) => void
+  addDutyFreeItem: (item: DutyFreeItem) => void
+  removeDutyFreeItem: (itemId: string) => void
   setPointsToRedeem: (points: number) => void
   reset: () => void
 
@@ -68,6 +87,9 @@ export interface BookingState {
 export const POINT_VALUE = 0.25
 
 export const useBookingStore = create<BookingState>((set, get) => ({
+  activeTab: 'flights',
+  tripType: 'round',
+
   origin: 'KUL',
   destination: 'DMK',
   date: '2026-10-15',
@@ -79,9 +101,15 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   selectedMeals: [],
   baggage: null,
   insurance: null,
+  selectedBundle: null,
+  dutyFreeCart: [],
 
   memberPoints: 12450,
   pointsToRedeem: 0,
+
+  setActiveTab: (tab) => set({ activeTab: tab }),
+
+  setTripType: (tripType) => set({ tripType }),
 
   setRoute: (patch) =>
     set((s) => {
@@ -132,6 +160,19 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   setInsurance: (insurance) =>
     set((s) => ({ insurance: s.insurance?.id === insurance?.id ? null : insurance })),
 
+  setBundle: (bundle) =>
+    set((s) => ({ selectedBundle: s.selectedBundle?.id === bundle?.id ? null : bundle })),
+
+  addDutyFreeItem: (item) =>
+    set((s) =>
+      s.dutyFreeCart.some((i) => i.id === item.id)
+        ? s
+        : { dutyFreeCart: [...s.dutyFreeCart, item] },
+    ),
+
+  removeDutyFreeItem: (itemId) =>
+    set((s) => ({ dutyFreeCart: s.dutyFreeCart.filter((i) => i.id !== itemId) })),
+
   setPointsToRedeem: (points) =>
     set((s) => ({
       pointsToRedeem: Math.max(0, Math.min(Math.round(points), s.memberPoints)),
@@ -144,22 +185,41 @@ export const useBookingStore = create<BookingState>((set, get) => ({
       selectedMeals: [],
       baggage: null,
       insurance: null,
+      selectedBundle: null,
+      dutyFreeCart: [],
       pointsToRedeem: 0,
     }),
 
-  getFlightPrice: () => {
-    const s = get()
-    return (s.selectedFlight?.baseFare ?? 0) * s.passengers
-  },
+  getFlightPrice: () => selectFlightTotal(get()),
 
   getTotalAmount: () => selectTotal(get()),
 }))
 
+/** Fare across all guests; a round trip prices both legs. */
+export function selectFlightTotal(s: BookingState): number {
+  const legs = s.tripType === 'round' ? 2 : 1
+  return (s.selectedFlight?.baseFare ?? 0) * s.passengers * legs
+}
+
+/** Booking on the SNAP tab bundles a hotel into the trip. */
+export function selectHotelAddon(s: BookingState): number {
+  return s.activeTab === 'snap' ? SNAP_HOTEL_PRICE : 0
+}
+
 export function selectSubtotal(s: BookingState): number {
   const seatTotal = s.selectedSeats.reduce((acc, seat) => acc + seat.price, 0)
   const mealTotal = s.selectedMeals.reduce((acc, meal) => acc + meal.price, 0)
-  const flightTotal = (s.selectedFlight?.baseFare ?? 0) * s.passengers
-  return flightTotal + seatTotal + mealTotal + (s.baggage?.price ?? 0) + (s.insurance?.price ?? 0)
+  const dutyFreeTotal = s.dutyFreeCart.reduce((acc, item) => acc + item.price, 0)
+  return (
+    selectFlightTotal(s) +
+    seatTotal +
+    mealTotal +
+    dutyFreeTotal +
+    (s.baggage?.price ?? 0) +
+    (s.insurance?.price ?? 0) +
+    (s.selectedBundle?.price ?? 0) +
+    selectHotelAddon(s)
+  )
 }
 
 export function selectPointsDiscount(s: BookingState): number {

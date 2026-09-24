@@ -4,6 +4,8 @@ import { Ticket } from 'lucide-react'
 import { formatINR } from '@/lib/data'
 import {
   POINT_VALUE,
+  selectFlightTotal,
+  selectHotelAddon,
   selectPointsDiscount,
   selectSubtotal,
   selectTotal,
@@ -18,15 +20,21 @@ export default function TripSummary() {
   const meals = useBookingStore((s) => s.selectedMeals)
   const baggage = useBookingStore((s) => s.baggage)
   const insurance = useBookingStore((s) => s.insurance)
+  const bundle = useBookingStore((s) => s.selectedBundle)
+  const dutyFreeCart = useBookingStore((s) => s.dutyFreeCart)
+  const tripType = useBookingStore((s) => s.tripType)
   const origin = useBookingStore((s) => s.origin)
   const destination = useBookingStore((s) => s.destination)
 
+  const flightTotal = useBookingStore(selectFlightTotal)
+  const hotelAddon = useBookingStore(selectHotelAddon)
   const subtotal = useBookingStore(selectSubtotal)
   const discount = useBookingStore(selectPointsDiscount)
   const total = useBookingStore(selectTotal)
 
   const seatTotal = seats.reduce((acc, s) => acc + s.price, 0)
   const mealTotal = meals.reduce((acc, m) => acc + m.price, 0)
+  const dutyFreeTotal = dutyFreeCart.reduce((acc, i) => acc + i.price, 0)
 
   return (
     <aside className="flex flex-col rounded-2xl border border-neutral-200 bg-white p-6 lg:sticky lg:top-24">
@@ -43,13 +51,13 @@ export default function TripSummary() {
       ) : (
         <>
           <p className="text-sm text-neutral-500">
-            {flight.flightNo} · {origin} → {destination} · {flight.depart}
+            {flight.flightNo} · {origin} {tripType === 'round' ? '⇄' : '→'} {destination} · {flight.depart}
           </p>
 
           <dl className="mt-4 space-y-2 border-t border-neutral-100 pt-4 text-sm">
             <Line
-              label={`Base fare × ${passengers}`}
-              value={formatINR(flight.baseFare * passengers)}
+              label={`Base fare × ${passengers}${tripType === 'round' ? ' × 2 legs' : ''}`}
+              value={formatINR(flightTotal)}
             />
             <Line
               label={seats.length ? `Seats ${seats.map((s) => s.id).join(', ')}` : 'Seats'}
@@ -71,6 +79,19 @@ export default function TripSummary() {
               value={insurance ? formatINR(insurance.price) : 'Not added'}
               muted={!insurance}
             />
+            <Line
+              label={bundle ? `${bundle.name} bundle` : 'Add-on bundle'}
+              value={bundle ? formatINR(bundle.price) : 'Not added'}
+              muted={!bundle}
+            />
+            <Line
+              label={dutyFreeCart.length ? `Duty free × ${dutyFreeCart.length}` : 'Duty free'}
+              value={dutyFreeCart.length ? formatINR(dutyFreeTotal) : 'Cart empty'}
+              muted={!dutyFreeCart.length}
+            />
+            {hotelAddon > 0 && (
+              <Line label="SNAP hotel · 3 nights" value={formatINR(hotelAddon)} />
+            )}
           </dl>
 
           <dl className="mt-3 space-y-2 border-t border-neutral-100 pt-3 text-sm">

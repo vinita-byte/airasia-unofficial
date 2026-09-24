@@ -167,6 +167,55 @@ export const INSURANCE_OPTIONS: InsuranceOption[] = [
   { id: 'ins-plus', label: 'Travel Plus', price: 1099, cover: 'Everything in Essential, cover up to ₹10L' },
 ]
 
+export type BundleId = 'value_pack' | 'red_carpet' | 'extra_baggage'
+
+export interface AncillaryBundle {
+  id: BundleId
+  name: string
+  price: number
+  description: string
+}
+
+export const ANCILLARY_BUNDLES: AncillaryBundle[] = [
+  {
+    id: 'value_pack',
+    name: 'Value Pack',
+    price: 1499,
+    description: 'Standard seat, 20kg checked bag and one Santan meal, bundled at a saver price.',
+  },
+  {
+    id: 'red_carpet',
+    name: 'Red Carpet',
+    price: 2999,
+    description: 'Priority check-in and boarding, lounge access and express baggage on arrival.',
+  },
+  {
+    id: 'extra_baggage',
+    name: 'Extra Baggage',
+    price: 1899,
+    description: 'A flat-rate 25kg of extra hold weight on top of whatever you already carry.',
+  },
+]
+
+export interface DutyFreeItem {
+  id: string
+  name: string
+  category: string
+  price: number
+}
+
+export const DUTY_FREE_ITEMS: DutyFreeItem[] = [
+  { id: 'df-choc', name: 'Ferrero Rocher T24', category: 'Chocolates', price: 899 },
+  { id: 'df-tea', name: 'TWG Singapore Breakfast Tea', category: 'Gourmet', price: 1150 },
+  { id: 'df-model', name: 'AirAsia A320neo Diecast Model', category: 'Collectibles', price: 1299 },
+  { id: 'df-whisky', name: 'Jim Beam Black 1L', category: 'Spirits', price: 2450 },
+  { id: 'df-shades', name: 'Ray-Ban Aviator Classic', category: 'Accessories', price: 6499 },
+  { id: 'df-perfume', name: 'Chanel N°5 EDP 50ml', category: 'Fragrance', price: 7999 },
+]
+
+/** Flat hotel add-on bundled into a SNAP (flight + hotel) booking. */
+export const SNAP_HOTEL_PRICE = 6500
+
 export type TierId = 'Red' | 'Gold' | 'Platinum' | 'Black'
 
 export interface Tier {

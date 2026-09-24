@@ -4,10 +4,10 @@ import { Plane } from 'lucide-react'
 import CabinScene from '@/components/CabinScene'
 import Logo from '@/components/Logo'
 import CareersPortal from '@/components/CareersPortal'
-import FlightSearch from '@/components/FlightSearch'
+import ProductTabs from '@/components/ProductTabs'
 import RewardsHub from '@/components/RewardsHub'
 import TripSummary from '@/components/TripSummary'
-import { BaggageAndInsurance, SantanMeals } from '@/components/Ancillaries'
+import { BaggageAndInsurance, BundleOffers, SantanMeals } from '@/components/Ancillaries'
 import { tierFor } from '@/lib/data'
 import { useBookingStore } from '@/store/useBookingStore'
 
@@ -15,6 +15,7 @@ const NAV = [
   { href: '#booking', label: 'Flights' },
   { href: '#seats', label: 'Seat map' },
   { href: '#meals', label: 'Santan' },
+  { href: '#bundles', label: 'Bundles' },
   { href: '#rewards', label: 'Rewards' },
   { href: '#careers', label: 'Careers' },
 ]
@@ -78,7 +79,7 @@ export default function Home() {
       </section>
 
       <section id="booking" className="mx-auto max-w-7xl px-4 pt-10 sm:px-6">
-        <FlightSearch />
+        <ProductTabs />
       </section>
 
       <section id="seats" className="mx-auto max-w-7xl px-4 pt-14 sm:px-6">
@@ -99,6 +100,7 @@ export default function Home() {
       </section>
 
       <SantanMeals />
+      <BundleOffers />
       <BaggageAndInsurance />
       <RewardsHub />
       <CareersPortal />

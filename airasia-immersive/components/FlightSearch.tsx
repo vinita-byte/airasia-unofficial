@@ -28,6 +28,8 @@ export default function FlightSearch() {
   const swapRoute = useBookingStore((s) => s.swapRoute)
   const selectFlight = useBookingStore((s) => s.selectFlight)
   const selectedFlightId = useBookingStore((s) => s.selectedFlight?.id ?? null)
+  const tripType = useBookingStore((s) => s.tripType)
+  const setTripType = useBookingStore((s) => s.setTripType)
 
   const flights = useMemo(
     () => buildFareMatrix(origin, destination, date, cabin),
@@ -40,9 +42,33 @@ export default function FlightSearch() {
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="mb-4 flex items-center gap-2 font-bold text-aa-red">
-          <Plane className="h-5 w-5" />
-          <span>Flight search &amp; itinerary</span>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 font-bold text-aa-red">
+            <Plane className="h-5 w-5" />
+            <span>Flight search &amp; itinerary</span>
+          </div>
+
+          <div className="flex rounded-lg border border-neutral-200 p-0.5">
+            {(
+              [
+                { id: 'round', label: 'Round trip' },
+                { id: 'one-way', label: 'One way' },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.id}
+                onClick={() => setTripType(option.id)}
+                aria-pressed={tripType === option.id}
+                className={`rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
+                  tripType === option.id
+                    ? 'bg-aa-red text-white'
+                    : 'text-neutral-500 hover:text-neutral-800'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_1fr_1fr_auto]">
@@ -188,7 +214,9 @@ export default function FlightSearch() {
                       >
                         {formatINR(flight.baseFare)}
                       </p>
-                      <p className="text-[11px] text-neutral-500">per guest</p>
+                      <p className="text-[11px] text-neutral-500">
+                        per guest{tripType === 'round' ? ' / leg' : ''}
+                      </p>
                       {flight.seatsLeft <= 8 && (
                         <p className="mt-0.5 flex items-center justify-end gap-1 text-[11px] font-bold text-aa-red">
                           <TrendingUp className="h-3 w-3" />

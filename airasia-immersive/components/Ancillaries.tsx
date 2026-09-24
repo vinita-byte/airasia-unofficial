@@ -1,13 +1,68 @@
 'use client'
 
-import { Briefcase, Check, ShieldCheck, Utensils } from 'lucide-react'
+import { Briefcase, Check, Package, ShieldCheck, Utensils } from 'lucide-react'
 import {
+  ANCILLARY_BUNDLES,
   BAGGAGE_OPTIONS,
   INSURANCE_OPTIONS,
   SANTAN_MENU,
   formatINR,
 } from '@/lib/data'
 import { useBookingStore } from '@/store/useBookingStore'
+
+export function BundleOffers() {
+  const selectedBundle = useBookingStore((s) => s.selectedBundle)
+  const setBundle = useBookingStore((s) => s.setBundle)
+
+  return (
+    <section id="bundles" className="mx-auto max-w-7xl px-4 pt-14 sm:px-6">
+      <SectionHeading
+        icon={<Package className="h-5 w-5 text-aa-red" />}
+        title="Bundle & save"
+        subtitle="One flat add-on that packages the extras most travellers buy anyway. Pick one per booking."
+      />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {ANCILLARY_BUNDLES.map((bundle) => {
+          const isSelected = selectedBundle?.id === bundle.id
+          return (
+            <button
+              key={bundle.id}
+              onClick={() => setBundle(bundle)}
+              aria-pressed={isSelected}
+              className={`rounded-xl border p-5 text-left transition-all ${
+                isSelected
+                  ? 'border-aa-red bg-red-50 ring-1 ring-aa-red/20'
+                  : 'border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-sm'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <h4 className="text-lg font-black">{bundle.name}</h4>
+                <span className="shrink-0 font-bold text-neutral-800">
+                  {formatINR(bundle.price)}
+                </span>
+              </div>
+              <p className="mt-1.5 text-sm text-neutral-500">{bundle.description}</p>
+              <span
+                className={`mt-4 inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-bold ${
+                  isSelected ? 'bg-aa-red text-white' : 'bg-neutral-100 text-neutral-700'
+                }`}
+              >
+                {isSelected ? (
+                  <>
+                    <Check className="h-3 w-3" /> Added
+                  </>
+                ) : (
+                  '+ Add bundle'
+                )}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
 
 export function SantanMeals() {
   const selectedMeals = useBookingStore((s) => s.selectedMeals)
