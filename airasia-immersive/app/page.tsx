@@ -105,7 +105,12 @@ export default function Home() {
 
       <footer className="mx-auto mt-16 max-w-7xl px-4 sm:px-6">
         <div className="border-t border-neutral-200 pt-6 text-xs text-neutral-500">
-          <Logo className="h-4" />
+          <div className="flex items-center gap-3">
+            <Logo className="h-9" />
+            <span className="text-sm font-black tracking-tight text-neutral-800">
+              AirAsia Unofficial
+            </span>
+          </div>
           <p className="mt-3 max-w-2xl">
             A fan-built concept, not affiliated with or endorsed by AirAsia or
             Capital A. Fares, schedules, seat availability and job postings are
