@@ -52,7 +52,8 @@ export default function App() {
   }, [open, target])
 
   const hands = useHandTracking({
-    onPinch: (value) => {
+    getOpen: () => open.get(),
+    onGrabMove: (value) => {
       touch()
       target.set(value)
     },
@@ -167,14 +168,21 @@ export default function App() {
         </div>
 
         <div className="pointer-events-auto flex w-[178px] flex-col gap-2 rounded-2xl border border-white/15 bg-[#0a0c10]/75 p-3 backdrop-blur-md">
-          <video
-            ref={hands.videoRef}
-            playsInline
-            muted
-            className={`aspect-[4/3] w-full -scale-x-100 rounded-lg bg-black object-cover ${
-              hands.running ? 'block' : 'hidden'
+          {/* Never display:none — browsers stop decoding hidden video, which
+              silently starves the tracker. Collapse it with layout instead. */}
+          <div
+            className={`overflow-hidden transition-all ${
+              hands.running ? 'h-auto opacity-100' : 'h-0 opacity-0'
             }`}
-          />
+          >
+            <video
+              ref={hands.videoRef}
+              playsInline
+              muted
+              autoPlay
+              className="aspect-[4/3] w-full -scale-x-100 rounded-lg bg-black object-cover"
+            />
+          </div>
           <p
             className={`text-[10px] leading-relaxed tracking-wide ${
               hands.state === 'pinched'

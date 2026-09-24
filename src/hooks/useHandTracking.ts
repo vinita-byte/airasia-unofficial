@@ -10,16 +10,30 @@ const WASM_BASE =
 const MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'
 
-/** Hand vertical band (normalized video coords) mapped onto full blind travel. */
-const HAND_TOP = 0.18
-const HAND_BOTTOM = 0.82
+/**
+ * Vertical hand travel (normalized video coords) that equals one full sweep of
+ * the blind. Smaller means the blind moves further for the same hand movement.
+ */
+const HAND_TRAVEL = 0.55
+
+/**
+ * Pinch uses separate enter/exit thresholds. With one threshold the grab
+ * chatters on and off at the boundary, and every release re-runs the snap.
+ */
+const PINCH_ENTER = 0.3
+const PINCH_EXIT = 0.45
+
+/** If the camera never delivers frames, say so instead of spinning silently. */
+const FRAME_TIMEOUT_MS = 4000
 
 export type HandState = 'idle' | 'loading' | 'tracking' | 'pinched' | 'error'
 
 export interface HandTrackingCallbacks {
-  /** Fires while pinching; `open` is 1 with the hand high, 0 with it low. */
-  onPinch: (open: number) => void
-  /** Fires once when the pinch is released or the hand disappears mid-grab. */
+  /** Current blind position, so a grab continues from where the blind is. */
+  getOpen: () => number
+  /** Fires while pinching with the new blind position (0 shut, 1 open). */
+  onGrabMove: (open: number) => void
+  /** Fires once when the pinch ends or the hand leaves frame mid-grab. */
   onRelease: () => void
 }
 
@@ -38,6 +52,13 @@ export function useHandTracking(callbacks: HandTrackingCallbacks) {
   const runningRef = useRef(false)
   const pinchingRef = useRef(false)
   const lastVideoTimeRef = useRef(-1)
+  const firstFrameSeenRef = useRef(false)
+  const loopStartedAtRef = useRef(0)
+
+  // Where the hand and the blind were when this grab started, so the blind
+  // moves by how far the hand travels rather than jumping to its absolute height.
+  const anchorHandYRef = useRef(0)
+  const anchorOpenRef = useRef(0)
 
   const report = useCallback((next: HandState, text: string) => {
     setState(next)
@@ -68,26 +89,52 @@ export function useHandTracking(callbacks: HandTrackingCallbacks) {
     }
     rafRef.current = requestAnimationFrame(loop)
 
-    if (video.readyState < 2 || video.currentTime === lastVideoTimeRef.current) {
+    if (video.readyState < 2) {
+      if (
+        !firstFrameSeenRef.current &&
+        performance.now() - loopStartedAtRef.current > FRAME_TIMEOUT_MS
+      ) {
+        report('error', 'Camera sent no frames — check it is not in use elsewhere')
+      }
+      return
+    }
+    if (video.currentTime === lastVideoTimeRef.current) {
       return
     }
     lastVideoTimeRef.current = video.currentTime
+    firstFrameSeenRef.current = true
 
     let result: HandLandmarkerResult
     try {
       result = landmarker.detectForVideo(video, performance.now())
-    } catch {
+    } catch (error) {
+      // Swallowing this is what made failures look like "no hand detected".
+      runningRef.current = false
+      cancelAnimationFrame(rafRef.current)
+      report(
+        'error',
+        `Hand tracking stopped: ${error instanceof Error ? error.message : 'detection failed'}`,
+      )
       return
     }
 
     const hand = result.landmarks[0]
-    const pinching = hand ? isPinching(hand) : false
+    const pinchRatio = hand ? pinchTightness(hand) : Infinity
+    const threshold = pinchingRef.current ? PINCH_EXIT : PINCH_ENTER
+    const pinching = pinchRatio < threshold
 
     if (hand && pinching) {
-      pinchingRef.current = true
       const grabY = (hand[4].y + hand[8].y) / 2
-      const open = 1 - clamp01((grabY - HAND_TOP) / (HAND_BOTTOM - HAND_TOP))
-      callbacksRef.current.onPinch(open)
+
+      if (!pinchingRef.current) {
+        pinchingRef.current = true
+        anchorHandYRef.current = grabY
+        anchorOpenRef.current = callbacksRef.current.getOpen()
+      }
+
+      // Hand up (smaller y) raises the blind.
+      const delta = (anchorHandYRef.current - grabY) / HAND_TRAVEL
+      callbacksRef.current.onGrabMove(clamp01(anchorOpenRef.current + delta))
       report('pinched', 'Blind grabbed · move your hand up or down')
       return
     }
@@ -106,27 +153,53 @@ export function useHandTracking(callbacks: HandTrackingCallbacks) {
 
   const start = useCallback(async () => {
     const video = videoRef.current
-    if (runningRef.current || !video) {
+    if (runningRef.current) {
+      return
+    }
+    if (!video) {
+      report('error', 'Camera preview is missing from the page')
       return
     }
     runningRef.current = true
     setRunning(true)
     report('loading', 'Asking for the camera…')
 
+    if (!navigator.mediaDevices?.getUserMedia) {
+      runningRef.current = false
+      setRunning(false)
+      report('error', 'This browser has no camera API (needs HTTPS or localhost)')
+      return
+    }
+
     try {
       streamRef.current = await navigator.mediaDevices.getUserMedia({
         video: { width: 640, height: 480, facingMode: 'user' },
         audio: false,
       })
-    } catch {
+    } catch (error) {
       runningRef.current = false
       setRunning(false)
-      report('error', 'Camera blocked — slider and scroll still work')
+      report(
+        'error',
+        error instanceof DOMException && error.name === 'NotAllowedError'
+          ? 'Camera permission denied — slider and scroll still work'
+          : 'No camera available — slider and scroll still work',
+      )
       return
     }
 
     video.srcObject = streamRef.current
-    await video.play()
+    try {
+      // An unhandled rejection here used to strand the UI on "Asking for the camera…".
+      await video.play()
+    } catch (error) {
+      stop()
+      report(
+        'error',
+        `Could not start the camera preview: ${error instanceof Error ? error.message : 'play blocked'}`,
+      )
+      return
+    }
 
     if (!landmarkerRef.current) {
       report('loading', 'Loading hand tracker…')
@@ -134,14 +207,13 @@ export function useHandTracking(callbacks: HandTrackingCallbacks) {
         // Pulled in on demand so the tracker never weighs down first paint.
         const vision = await import('@mediapipe/tasks-vision')
         const fileset = await vision.FilesetResolver.forVisionTasks(WASM_BASE)
-        landmarkerRef.current = await vision.HandLandmarker.createFromOptions(fileset, {
-          baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
-          runningMode: 'VIDEO',
-          numHands: 1,
-        })
-      } catch {
+        landmarkerRef.current = await createLandmarker(vision, fileset)
+      } catch (error) {
         stop()
-        report('error', 'Hand tracker failed to load — slider and scroll still work')
+        report(
+          'error',
+          `Hand tracker failed to load: ${error instanceof Error ? error.message : 'unknown error'}`,
+        )
         return
       }
     }
@@ -152,6 +224,8 @@ export function useHandTracking(callbacks: HandTrackingCallbacks) {
 
     report('tracking', 'Show a hand · pinch to grab the blind')
     lastVideoTimeRef.current = -1
+    firstFrameSeenRef.current = false
+    loopStartedAtRef.current = performance.now()
     loop()
   }, [loop, report, stop])
 
@@ -168,10 +242,36 @@ export function useHandTracking(callbacks: HandTrackingCallbacks) {
   return { videoRef, state, message, running, toggle }
 }
 
-function isPinching(hand: NormalizedLandmark[]): boolean {
+/** GPU inference fails outright on plenty of machines, so fall back to CPU. */
+async function createLandmarker(
+  vision: typeof import('@mediapipe/tasks-vision'),
+  fileset: Awaited<ReturnType<typeof import('@mediapipe/tasks-vision').FilesetResolver.forVisionTasks>>,
+): Promise<HandLandmarker> {
+  const base = {
+    runningMode: 'VIDEO' as const,
+    numHands: 1,
+    minHandDetectionConfidence: 0.5,
+    minHandPresenceConfidence: 0.5,
+    minTrackingConfidence: 0.5,
+  }
+  try {
+    return await vision.HandLandmarker.createFromOptions(fileset, {
+      ...base,
+      baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
+    })
+  } catch {
+    return await vision.HandLandmarker.createFromOptions(fileset, {
+      ...base,
+      baseOptions: { modelAssetPath: MODEL_URL, delegate: 'CPU' },
+    })
+  }
+}
+
+/** Thumb-to-index gap measured against palm size, so it works at any distance. */
+function pinchTightness(hand: NormalizedLandmark[]): number {
   const pinchGap = distance(hand[4], hand[8])
   const handScale = distance(hand[0], hand[9])
-  return handScale > 0 && pinchGap / handScale < 0.32
+  return handScale > 0 ? pinchGap / handScale : Infinity
 }
 
 function distance(a: NormalizedLandmark, b: NormalizedLandmark): number {
