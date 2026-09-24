@@ -4,6 +4,10 @@ A hand-controlled interactive airplane window. A layered React UI — bezel, gla
 
 Built with Vite, React, Tailwind CSS, Framer Motion, Three.js, and MediaPipe.
 
+**Live:** [seat-22a.vercel.app](https://seat-22a.vercel.app)
+
+Hand control needs camera permission, which browsers only grant over HTTPS — the deployed site qualifies.
+
 ## Run locally
 
 ```bash
