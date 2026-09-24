@@ -1,4 +1,6 @@
 import burjUrl from '../assets/burj-khalifa.jpg'
+import fujiUrl from '../assets/mount-fuji.jpg'
+import santoriniUrl from '../assets/santorini.jpg'
 import flyerUrl from '../assets/singapore-flyer.jpg'
 
 export interface Destination {
@@ -9,8 +11,10 @@ export interface Destination {
   title: string
   place: string
   timeZone: string
-  /** Short zone label beside the clock. */
+  /** Short zone label beside the clock, for standard time. */
   zoneLabel: string
+  /** Summer-time label, for the zones that keep one. */
+  zoneLabelDst?: string
   photo: string
 }
 
@@ -34,6 +38,27 @@ export const DESTINATIONS: Destination[] = [
     timeZone: 'Asia/Dubai',
     zoneLabel: 'GST',
     photo: burjUrl,
+  },
+  {
+    id: 'nrt',
+    code: 'NRT',
+    flight: 'JL 036',
+    title: 'Mount Fuji',
+    place: 'Chureito Pagoda',
+    timeZone: 'Asia/Tokyo',
+    zoneLabel: 'JST',
+    photo: fujiUrl,
+  },
+  {
+    id: 'jtr',
+    code: 'JTR',
+    flight: 'A3 352',
+    title: 'Santorini',
+    place: 'Oia caldera',
+    timeZone: 'Europe/Athens',
+    zoneLabel: 'EET',
+    zoneLabelDst: 'EEST',
+    photo: santoriniUrl,
   },
 ]
 

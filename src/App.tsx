@@ -192,6 +192,7 @@ export default function App() {
           <p className="hud-label text-[#2a2621]/55">Seat 22A</p>
           <CabinClocks
             zoneLabel={destination.zoneLabel}
+            zoneLabelDst={destination.zoneLabelDst}
             timeZone={destination.timeZone}
           />
         </div>
@@ -211,14 +212,14 @@ export default function App() {
         <div className="pointer-events-auto flex w-[178px] flex-col gap-2 rounded-2xl border border-white/15 bg-[#0a0c10]/75 p-3 backdrop-blur-md">
           <div>
             <span className="hud-label text-white/45">Destination</span>
-            <div className="mt-1.5 flex gap-1.5">
+            <div className="mt-1.5 grid grid-cols-2 gap-1.5">
               {DESTINATIONS.map((option, index) => (
                 <button
                   key={option.id}
                   type="button"
                   onClick={() => changeDestination(index)}
                   aria-pressed={index === destIndex}
-                  className={`flex-1 cursor-pointer rounded-lg px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] transition-colors ${
+                  className={`cursor-pointer rounded-lg px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] transition-colors ${
                     index === destIndex
                       ? 'bg-[#efede6] text-[#101114]'
                       : 'bg-white/10 text-white/65 hover:bg-white/20'
