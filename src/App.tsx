@@ -1,6 +1,7 @@
 import { useMotionValue, useMotionValueEvent, useSpring } from 'framer-motion'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AirplaneWindow } from './components/AirplaneWindow.tsx'
+import { CabinClocks } from './components/CabinClocks.tsx'
 import { useHandTracking } from './hooks/useHandTracking.ts'
 import {
   createPhotoScene,
@@ -151,9 +152,12 @@ export default function App() {
       />
 
       {/* HUD */}
-      <header className="pointer-events-none absolute inset-x-0 top-0 flex items-baseline justify-between p-5 sm:p-7">
+      <header className="pointer-events-none absolute inset-x-0 top-0 flex items-baseline justify-between gap-4 p-5 sm:p-7">
         <p className="hud-label text-white/90">SQ 318 · SIN</p>
-        <p className="hud-label text-white/45">Seat 22A</p>
+        <div className="flex flex-col items-end gap-1.5">
+          <p className="hud-label text-white/45">Seat 22A</p>
+          <CabinClocks />
+        </div>
       </header>
 
       <footer className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-5 sm:p-7">
