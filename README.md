@@ -29,7 +29,7 @@ Hand tracking runs fully in the browser with [MediaPipe Hand Landmarker](https:/
 ## How it's put together
 
 - `src/components/AirplaneWindow.tsx` — the layered stack: WebGL canvas → through-glass typography → sliding blind (with cast drop shadow and pull handle) → glass glare and inset bevels → padded surround and outer bezel. The blind's `translateY` is a Framer Motion spring (`stiffness: 120`, `damping: 14`).
-- `src/scene/singaporeScene.ts` — the Three.js scene (Singapore Flyer, bay water shader, city, park) with three lighting presets that swap while the blind is shut.
+- `src/scene/photoScene.ts` — the view outside: a photo of the Flyer over Marina Bay rendered through a WebGL shader, with three grade presets (exposure, tint, haze, vignette) that swap while the blind is shut.
 - `src/hooks/useHandTracking.ts` — webcam + MediaPipe Hand Landmarker; maps pinch height to blind position and reports release for snap behavior.
 - `src/components/MorphText.tsx` — the letter-by-letter scramble/dissolve between scene titles.
 
@@ -41,3 +41,12 @@ npm run preview
 ```
 
 Needs a browser with WebGL and hardware acceleration.
+
+## Also in this repo
+
+[`airasia-immersive/`](airasia-immersive) holds **AirAsia Unofficial**, a separate
+Next.js app: a fan-built concept of the AirAsia booking flow with a fare engine,
+a 3D cabin seat picker, Santan meals, duty free, reward tiers, a careers board
+and a Razorpay checkout that runs in demo mode. See its
+[README](airasia-immersive/README.md) to run it. Not affiliated with or endorsed
+by AirAsia or Capital A.
