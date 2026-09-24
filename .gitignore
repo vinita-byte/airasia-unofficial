@@ -12,7 +12,8 @@ dist
 dist-ssr
 *.local
 agent-tools
-assets
+# Scratch folder for uploads, not the bundled src/assets.
+/assets
 
 # Editor directories and files
 .vscode/*
