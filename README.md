@@ -4,6 +4,9 @@ A hand-controlled interactive airplane window. A moulded cabin sidewall — over
 
 Built with Vite, React, Tailwind CSS, Framer Motion, Three.js, and MediaPipe.
 
+A fan-built concept, not affiliated with or endorsed by AirAsia or Capital A.
+Flight numbers and schedules are invented for the piece; no real flight is shown.
+
 **Live:** [seat-22a.vercel.app](https://seat-22a.vercel.app)
 
 Hand control needs camera permission, which browsers only grant over HTTPS — the deployed site qualifies.

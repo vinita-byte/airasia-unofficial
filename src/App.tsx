@@ -1,5 +1,6 @@
 import { useMotionValue, useMotionValueEvent, useSpring } from 'framer-motion'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import roundelUrl from './assets/airasia-roundel.png'
 import { AirplaneWindow } from './components/AirplaneWindow.tsx'
 import { CabinClocks } from './components/CabinClocks.tsx'
 import { CabinInterior } from './components/CabinInterior.tsx'
@@ -184,10 +185,17 @@ export default function App() {
       />
 
       {/* HUD */}
-      <header className="pointer-events-none absolute inset-x-0 top-0 flex items-baseline justify-between gap-4 p-5 sm:p-7">
-        <p className="hud-label text-[#2a2621]">
-          {destination.flight} · {destination.code}
-        </p>
+      <header className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-4 p-5 sm:p-7">
+        <div className="flex items-center gap-2.5">
+          <img
+            src={roundelUrl}
+            alt="AirAsia"
+            className="h-6 w-6 drop-shadow-sm sm:h-7 sm:w-7"
+          />
+          <p className="hud-label text-[#2a2621]">
+            {destination.flight} · {destination.code}
+          </p>
+        </div>
         <div className="flex flex-col items-end gap-1.5">
           <p className="hud-label text-[#2a2621]/55">Seat 22A</p>
           <CabinClocks

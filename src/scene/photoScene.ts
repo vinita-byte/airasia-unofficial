@@ -22,7 +22,7 @@ export const DESTINATIONS: Destination[] = [
   {
     id: 'sin',
     code: 'SIN',
-    flight: 'SQ 318',
+    flight: 'AK 707',
     title: 'Singapore Flyer',
     place: 'Marina Bay',
     timeZone: 'Asia/Singapore',
@@ -32,7 +32,7 @@ export const DESTINATIONS: Destination[] = [
   {
     id: 'dxb',
     code: 'DXB',
-    flight: 'EK 517',
+    flight: 'D7 306',
     title: 'Burj Khalifa',
     place: 'Downtown Dubai',
     timeZone: 'Asia/Dubai',
@@ -42,7 +42,7 @@ export const DESTINATIONS: Destination[] = [
   {
     id: 'nrt',
     code: 'NRT',
-    flight: 'JL 036',
+    flight: 'D7 532',
     title: 'Mount Fuji',
     place: 'Chureito Pagoda',
     timeZone: 'Asia/Tokyo',
@@ -52,7 +52,7 @@ export const DESTINATIONS: Destination[] = [
   {
     id: 'jtr',
     code: 'JTR',
-    flight: 'A3 352',
+    flight: 'D7 918',
     title: 'Santorini',
     place: 'Oia caldera',
     timeZone: 'Europe/Athens',

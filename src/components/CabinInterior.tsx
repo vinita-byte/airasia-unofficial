@@ -1,3 +1,5 @@
+import wordmarkUrl from '../assets/airasia-wordmark.png'
+
 /**
  * The cabin around the window: a moulded plastic sidewall lit by the window
  * itself, with the overhead bin above and the seat and armrest below. Purely
@@ -38,6 +40,15 @@ export function CabinInterior() {
       <div
         className="absolute -top-[44%] left-1/2 h-[66%] w-[196%] -translate-x-1/2 rounded-b-[50%]"
         style={{ boxShadow: 'inset 0 -2px 0 rgba(48,42,34,0.22)' }}
+      />
+      {/* Carrier wordmark pressed into the bin door. */}
+      <img
+        src={wordmarkUrl}
+        alt=""
+        className="absolute left-1/2 top-[3.5%] h-[26px] w-auto -translate-x-1/2 opacity-[0.17] sm:h-[32px]"
+        style={{
+          filter: 'brightness(0) drop-shadow(0 1px 0 rgba(255,255,255,0.75))',
+        }}
       />
 
       {/* Seat back and armrest, thrown out of focus for depth. */}
