@@ -1,23 +1,26 @@
 import { useMotionValue, useMotionValueEvent, useSpring } from 'framer-motion'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AirplaneWindow } from './components/AirplaneWindow.tsx'
 import { useHandTracking } from './hooks/useHandTracking.ts'
 import {
-  createSingaporeScene,
+  createPhotoScene,
   SCENES,
   type SceneHandle,
-} from './scene/singaporeScene.ts'
+} from './scene/photoScene.ts'
 
 const SNAP_OPEN = 0.75
 const SNAP_CLOSED = 0.25
 /** Below this open fraction the blind counts as shut and the scene cycles. */
 const CYCLE_POINT = 0.1
+/** How long the blind must sit untouched before it lifts itself again. */
+const REOPEN_DELAY = 950
 
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sceneRef = useRef<SceneHandle | null>(null)
   const sliderRef = useRef<HTMLInputElement>(null)
   const reopenTimer = useRef(0)
+  const lastTouchRef = useRef(0)
   const armedRef = useRef(false)
 
   const [sceneIndex, setSceneIndex] = useState(0)
@@ -27,9 +30,30 @@ export default function App() {
   const target = useMotionValue(0)
   const open = useSpring(target, { stiffness: 120, damping: 14 })
 
+  /** Marks the blind as hand-driven right now, holding off any auto-reopen. */
+  const touch = useCallback(() => {
+    lastTouchRef.current = performance.now()
+  }, [])
+
+  // Waits for the user to let go, so fiddling with the blind can't strand it shut.
+  const scheduleReopen = useCallback(() => {
+    window.clearTimeout(reopenTimer.current)
+    const attempt = () => {
+      const idleFor = performance.now() - lastTouchRef.current
+      if (idleFor < REOPEN_DELAY) {
+        reopenTimer.current = window.setTimeout(attempt, REOPEN_DELAY - idleFor)
+        return
+      }
+      if (open.get() < SNAP_CLOSED) {
+        target.set(1)
+      }
+    }
+    reopenTimer.current = window.setTimeout(attempt, REOPEN_DELAY)
+  }, [open, target])
+
   const hands = useHandTracking({
     onPinch: (value) => {
-      window.clearTimeout(reopenTimer.current)
+      touch()
       target.set(value)
     },
     onRelease: () => {
@@ -48,7 +72,7 @@ export default function App() {
       return
     }
     try {
-      sceneRef.current = createSingaporeScene(canvas)
+      sceneRef.current = createPhotoScene(canvas)
     } catch {
       setWebglFailed(true)
       return
@@ -57,6 +81,7 @@ export default function App() {
     const openingTimer = window.setTimeout(() => target.set(1), 900)
     return () => {
       window.clearTimeout(openingTimer)
+      window.clearTimeout(reopenTimer.current)
       sceneRef.current?.dispose()
       sceneRef.current = null
     }
@@ -65,7 +90,7 @@ export default function App() {
   // Scroll and arrow keys as no-camera fallbacks.
   useEffect(() => {
     const nudge = (delta: number) => {
-      window.clearTimeout(reopenTimer.current)
+      touch()
       target.set(clamp01(target.get() + delta))
     }
     const onWheel = (event: WheelEvent) => nudge(-event.deltaY * 0.0011)
@@ -82,7 +107,7 @@ export default function App() {
       window.removeEventListener('wheel', onWheel)
       window.removeEventListener('keydown', onKey)
     }
-  }, [target])
+  }, [target, touch])
 
   useMotionValueEvent(open, 'change', (v) => {
     if (sliderRef.current && document.activeElement !== sliderRef.current) {
@@ -93,16 +118,13 @@ export default function App() {
       armedRef.current = true
     }
     // Pulling the blind fully shut swaps in the next scene behind it,
-    // then the blind lifts again on its own to reveal it.
+    // then the blind lifts again once the user lets go.
     if (armedRef.current && v < CYCLE_POINT) {
       armedRef.current = false
-      setSceneIndex((index) => {
-        const next = (index + 1) % SCENES.length
-        sceneRef.current?.setPreset(next)
-        return next
-      })
-      window.clearTimeout(reopenTimer.current)
-      reopenTimer.current = window.setTimeout(() => target.set(1), 1000)
+      const next = (sceneIndex + 1) % SCENES.length
+      setSceneIndex(next)
+      sceneRef.current?.setPreset(next)
+      scheduleReopen()
     }
   })
 
@@ -139,7 +161,7 @@ export default function App() {
             Scene {sceneIndex + 1}/{SCENES.length} · {scene.title}
           </p>
           <p className="hud-label mt-1 hidden text-white/40 sm:block">
-            Pull the blind fully shut to change the scene · scroll or ↑↓ works
+            Pull the blind fully shut to change the light · scroll or ↑↓ works
             too
           </p>
         </div>
@@ -175,7 +197,7 @@ export default function App() {
               aria-label="Blind position"
               className="w-full accent-[#efede6]"
               onInput={(event) => {
-                window.clearTimeout(reopenTimer.current)
+                touch()
                 target.set(Number(event.currentTarget.value) / 100)
               }}
             />

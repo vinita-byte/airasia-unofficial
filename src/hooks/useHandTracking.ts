@@ -1,8 +1,7 @@
-import {
-  FilesetResolver,
+import type {
   HandLandmarker,
-  type HandLandmarkerResult,
-  type NormalizedLandmark,
+  HandLandmarkerResult,
+  NormalizedLandmark,
 } from '@mediapipe/tasks-vision'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -132,8 +131,10 @@ export function useHandTracking(callbacks: HandTrackingCallbacks) {
     if (!landmarkerRef.current) {
       report('loading', 'Loading hand tracker…')
       try {
-        const fileset = await FilesetResolver.forVisionTasks(WASM_BASE)
-        landmarkerRef.current = await HandLandmarker.createFromOptions(fileset, {
+        // Pulled in on demand so the tracker never weighs down first paint.
+        const vision = await import('@mediapipe/tasks-vision')
+        const fileset = await vision.FilesetResolver.forVisionTasks(WASM_BASE)
+        landmarkerRef.current = await vision.HandLandmarker.createFromOptions(fileset, {
           baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
           runningMode: 'VIDEO',
           numHands: 1,
