@@ -2,6 +2,7 @@
 
 import { Plane } from 'lucide-react'
 import CabinScene from '@/components/CabinScene'
+import Logo from '@/components/Logo'
 import CareersPortal from '@/components/CareersPortal'
 import FlightSearch from '@/components/FlightSearch'
 import RewardsHub from '@/components/RewardsHub'
@@ -27,9 +28,9 @@ export default function Home() {
       <header className="sticky top-0 z-50 border-b border-neutral-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex items-center gap-6">
-            <span className="text-2xl font-black tracking-tighter text-aa-red sm:text-3xl">
-              airasia
-            </span>
+            <a href="#booking" aria-label="AirAsia Unofficial home">
+              <Logo priority />
+            </a>
             <nav className="hidden gap-5 text-sm font-semibold text-neutral-600 md:flex">
               {NAV.map((item) => (
                 <a
@@ -56,9 +57,15 @@ export default function Home() {
 
       <section className="border-b border-neutral-200 bg-aa-asphalt">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
-          <p className="flex items-center gap-2 text-xs font-bold tracking-widest text-aa-red uppercase">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <Logo variant="white" className="h-8 sm:h-10" />
+            <span className="rounded-full border border-white/25 px-2.5 py-1 text-[10px] font-bold tracking-widest text-white/70 uppercase">
+              Unofficial
+            </span>
+          </div>
+          <p className="mt-4 flex items-center gap-2 text-xs font-bold tracking-widest text-aa-red uppercase">
             <Plane className="h-4 w-4" />
-            AirAsia Unofficial
+            Fly with the Allstars
           </p>
           <h1 className="mt-2 max-w-2xl text-3xl font-black text-white sm:text-5xl">
             Book the whole trip in one scroll
@@ -98,8 +105,8 @@ export default function Home() {
 
       <footer className="mx-auto mt-16 max-w-7xl px-4 sm:px-6">
         <div className="border-t border-neutral-200 pt-6 text-xs text-neutral-500">
-          <p className="font-bold text-neutral-700">AirAsia Unofficial</p>
-          <p className="mt-1 max-w-2xl">
+          <Logo className="h-4" />
+          <p className="mt-3 max-w-2xl">
             A fan-built concept, not affiliated with or endorsed by AirAsia or
             Capital A. Fares, schedules, seat availability and job postings are
             generated for demonstration only, and no real booking is made.

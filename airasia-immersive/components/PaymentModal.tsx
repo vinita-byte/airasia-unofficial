@@ -104,6 +104,7 @@ export default function PaymentModal() {
       currency: order.currency,
       name: 'AirAsia Unofficial',
       description: 'Flight booking confirmation',
+      image: `${window.location.origin}/airasia-logo.png`,
       order_id: order.id,
       handler: (response: RazorpayResponse) => void confirm(response),
       modal: {
